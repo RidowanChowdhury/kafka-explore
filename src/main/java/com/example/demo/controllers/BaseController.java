@@ -6,7 +6,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 @RestController
 public class BaseController {
@@ -28,6 +30,17 @@ public class BaseController {
     @GetMapping("/kafka/{data}")
     public ResponseEntity<String> getKafkaMessage(@PathVariable String data) {
         producer.updateStreamMessage(data);
+        return new ResponseEntity<String>(HttpStatus.OK);
+    }
+    @GetMapping("/kafka/input")
+    public ResponseEntity<String> getKafkaMessage2() {
+        List<String> test = new ArrayList<>();
+        test.add("hello world");
+        test.add("hello");
+        test.add(("hello world, ridwan"));
+        for(String data: test) {
+            producer.updateStreamMessage(data);
+        }
         return new ResponseEntity<String>(HttpStatus.OK);
     }
 

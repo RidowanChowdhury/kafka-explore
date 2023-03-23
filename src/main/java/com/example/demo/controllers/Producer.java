@@ -28,14 +28,17 @@ public class Producer {
     public void getMessage(GroceryItem message) {
         System.out.println(message);
     }
+
     @EventListener(ApplicationReadyEvent.class)
     public void doSomethingAfterStartup() {
         kafkaTemplate.send(topic, GroceryItem.builder().id("1").name("egg").quantity(25).category("protein").build());
     }
+
     @KafkaListener(topics = topic2)
     public void getMessage2(String message) {
         System.out.println(message);
     }
+
     @EventListener(ApplicationReadyEvent.class)
     public void doSomethingAfterStartup2() {
         kafkaTemplate.send(topic2, "Neil");
@@ -43,16 +46,18 @@ public class Producer {
 
     @KafkaListener(topics = topic4)
     public void getStreamMessage(String message) {
-        System.out.println("From topic-4: "+message);
+        System.out.println("From topic-4: " + message);
     }
 
     @KafkaListener(topics = topic3)
     public void getStreamMessagebb(String message) {
-        System.out.println("From topic-3: "+message);
+        System.out.println("From topic-3: " + message);
     }
+
     public void updateStreamMessage(String message) {
-        key+=1;
-        kafkaTemplate.send(topic3, key+"", message);
+        key += 1;
+        System.out.println("key "+key);
+        kafkaTemplate.send(topic3, key + "", message);
 
     }
 }

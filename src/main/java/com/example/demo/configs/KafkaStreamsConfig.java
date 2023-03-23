@@ -2,6 +2,7 @@ package com.example.demo.configs;
 
 
 import com.example.demo.controllers.Producer;
+import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -17,6 +18,7 @@ import org.springframework.kafka.config.KafkaStreamsConfiguration;
 import org.springframework.kafka.config.StreamsBuilderFactoryBeanConfigurer;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -44,23 +46,53 @@ public class KafkaStreamsConfig {
         });
     }
 
+
     @Bean
-    public KStream<String, String> kStream(StreamsBuilder kStreamBuilder) {
+    public KTable<String, String> kStream(StreamsBuilder builder) {
+        // Serializers/deserializers (serde) for String and Long types
+        final Serde<String> stringSerde = Serdes.String();
+        final Serde<Long> longSerde = Serdes.Long();
 
-        KStream<String, String> stream = kStreamBuilder.stream(Producer.topic3);
-        stream
-                .mapValues((ValueMapper<String, String>) String::toUpperCase)
-                .groupByKey()
-                .windowedBy(TimeWindows.of(Duration.ofMillis(20000)))
-                .reduce((String value1, String value2) -> value1 + value2,
-                        Named.as("windowStore"))
-                .toStream()
-                .map((windowedId, value) -> new KeyValue<>(windowedId.key(), value))
-                .to(Producer.topic4);
+// Construct a `KStream` from the input topic "streams-plaintext-input", where message values
+// represent lines of text (for the sake of this example, we ignore whatever may be stored
+// in the message keys).
+        KStream<String, String> textLines = builder.stream(Producer.topic3, Consumed.with(stringSerde, stringSerde));
 
-        stream.print(Printed.toSysOut());
+        KTable<String, String> wordCounts = textLines
 
-        return stream;
+                // Split each text line, by whitespace, into words.  The text lines are the message
+                // values, i.e. we can ignore whatever data is in the message keys and thus invoke
+                // `flatMapValues` instead of the more generic `flatMap`.
+                .flatMapValues(value -> Arrays.asList(value.toLowerCase().split("\\W+")))
+                // We use `groupBy` to ensure the words are available as message keys
+
+                .groupBy((key, value) -> value)
+
+                // Count the occurrences of each word (message key).
+                .count().mapValues((s, aLong) -> aLong.toString())
+                ;
+
+// Convert the `KTable<String, Long>` into a `KStream<String, Long>` and write to the output topic.
+        wordCounts.toStream().to(Producer.topic4, Produced.with(stringSerde, stringSerde));
+        return wordCounts;
     }
+//    @Bean
+//    public KStream<String, String> kStreamUppercase(StreamsBuilder kStreamBuilder) {
+//
+//        KStream<String, String> stream = kStreamBuilder.stream(Producer.topic3);
+//        stream
+//                .mapValues((ValueMapper<String, String>) String::toUpperCase)
+//                .groupByKey()
+//                .windowedBy(TimeWindows.of(Duration.ofMillis(20000)))
+//                .reduce((String value1, String value2) -> value1 + value2,
+//                        Named.as("windowStore"))
+//                .toStream()
+//                .map((windowedId, value) -> new KeyValue<>(windowedId.key(), value))
+//                .to(Producer.topic4);
+//
+//        stream.print(Printed.toSysOut());
+//
+//        return stream;
+//    }
 
 }
